@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/bitly/go-simplejson v0.5.0
+	github.com/containerd/containerd v1.4.11 // indirect
 	github.com/golang-migrate/migrate/v4 v4.12.2
 	github.com/gorilla/mux v1.7.4
 	github.com/jinzhu/gorm v1.9.16
