@@ -3,7 +3,7 @@ module api
 go 1.15
 
 require (
-	github.com/containerd/containerd v1.4.12
+	github.com/containerd/containerd v1.5.8
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/bitly/go-simplejson v0.5.0
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
