@@ -19,6 +19,6 @@ require (
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 )
 
-replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.8
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.5.9
 
 replace github.com/opencontainers/image-spec => github.com/opencontainers/image-spec v1.0.2
