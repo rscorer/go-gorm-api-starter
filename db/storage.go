@@ -1,15 +1,16 @@
 package db
 
 import (
-	"database/sql"
 	"errors"
 	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/mysql"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jinzhu/gorm"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
+
+type Repository struct {
+	Db *gorm.DB
+}
 
 type Storage struct {
 	log *logrus.Logger
@@ -23,7 +24,7 @@ func CreateStorage(log *logrus.Logger) *Storage {
 
 func (s *Storage) OpenDB(dsn string) (*Repository, error) {
 	s.log.WithField("dsn", dsn).Debug("opening")
-	database, err := gorm.Open("mysql", dsn)
+	database, err := gorm.Open(mysql.Open(dsn))
 	if err != nil {
 		return nil, err
 	}
@@ -36,37 +37,13 @@ func (s *Storage) InitDB(dsn string) (*Repository, error) {
 		return nil, err
 	}
 	s.log.Debug("migrating")
-	err = s.migrations(db.Db.DB())
+	mdb, err := db.Db.DB()
+	if err != nil {
+		return nil, err
+	}
+	err = s.migrations(mdb)
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		s.log.WithError(err).Errorln("not errnochange")
 		return nil, err
 	}
 	return db, nil
-}
-
-func (s *Storage) migrations(db *sql.DB) error {
-	// are there any files to migrate?
-	dir := "./db/migrations"
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	if len(files) == 0 {
-		return nil
-	}
-	driver, err := mysql.WithInstance(db, &mysql.Config{})
-	if err != nil {
-		return err
-	}
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+dir,
-		"mysql", driver)
-	if err != nil {
-		return err
-	}
-	err = m.Up()
-	if err != nil {
-		return err
-	}
-	return nil
 }
