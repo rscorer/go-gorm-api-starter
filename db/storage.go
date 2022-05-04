@@ -7,22 +7,22 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jinzhu/gorm"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"io/ioutil"
 )
 
 type Storage struct {
-	log *log.Logger
+	log *logrus.Logger
 }
 
-func CreateStorage(log *log.Logger) *Storage {
+func CreateStorage(log *logrus.Logger) *Storage {
 	return &Storage{
 		log: log,
 	}
 }
 
-func (storage *Storage) OpenDB(dsn string) (*Repository, error) {
-	log.WithField("dsn", dsn).Debug("opening")
+func (s *Storage) OpenDB(dsn string) (*Repository, error) {
+	s.log.WithField("dsn", dsn).Debug("opening")
 	database, err := gorm.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
@@ -30,20 +30,21 @@ func (storage *Storage) OpenDB(dsn string) (*Repository, error) {
 	return &Repository{Db: database}, nil
 }
 
-func (storage *Storage) InitDB(dsn string) (*Repository, error) {
-	db, err := storage.OpenDB(dsn)
+func (s *Storage) InitDB(dsn string) (*Repository, error) {
+	db, err := s.OpenDB(dsn)
 	if err != nil {
 		return nil, err
 	}
-	storage.log.Debug("migrating")
-	err = storage.migrations(db.Db.DB())
+	s.log.Debug("migrating")
+	err = s.migrations(db.Db.DB())
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		s.log.WithError(err).Errorln("not errnochange")
 		return nil, err
 	}
 	return db, nil
 }
 
-func (storage *Storage) migrations(db *sql.DB) error {
+func (s *Storage) migrations(db *sql.DB) error {
 	// are there any files to migrate?
 	dir := "./db/migrations"
 	files, err := ioutil.ReadDir(dir)
@@ -63,5 +64,9 @@ func (storage *Storage) migrations(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return m.Up()
+	err = m.Up()
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -3,16 +3,26 @@ package main
 import (
 	"encoding/json"
 	"github.com/bitly/go-simplejson"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"net/http"
+	"time"
 )
 
-func (api *Api) setupRouter() *mux.Router {
-	r := mux.NewRouter()
-	r.Use(api.loggingMiddleware, mux.CORSMethodMiddleware(r))
+func (api *Api) setupRouter() *chi.Mux {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
-	r.HandleFunc("/ping", api.PingHandler).Methods(http.MethodGet, http.MethodOptions)
-	r.HandleFunc("/health", api.HealthCheckHandler).Methods(http.MethodGet)
+	r.Use(middleware.Timeout(60 * time.Second))
+
+	r.Route("/v1", func(r chi.Router) {
+		r.Get("/ping", api.PingHandler)
+		r.Options("/ping", api.PingHandler)
+		r.Get("/health", api.HealthCheckHandler)
+	})
 
 	return r
 }
@@ -20,6 +30,8 @@ func (api *Api) setupRouter() *mux.Router {
 func (api *Api) HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	j := simplejson.New()
 	j.Set("alive", "true")
+	j.Set("environment", api.env)
+	j.Set("version", version)
 	api.respondJSON(w, http.StatusOK, j)
 }
 

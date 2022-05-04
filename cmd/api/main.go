@@ -3,6 +3,7 @@ package main
 import (
 	"api/db"
 	"context"
+	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -11,19 +12,28 @@ import (
 	"time"
 )
 
+const version = "1.0.0"
+
 type Api struct {
 	db  *db.Repository
 	log *logrus.Logger
+	env *string
 }
 
 func main() {
 	log := logrus.New()
 	log.SetReportCaller(true)
-	log.SetLevel(logrus.DebugLevel)
+	log.SetLevel(logrus.InfoLevel)
+	log.SetFormatter(&logrus.JSONFormatter{})
 	if err := godotenv.Load(); err != nil {
 		log.WithError(err).Error("No .env file found")
 	}
-	appAddr := "0.0.0.0:" + os.Getenv("PORT")
+	env := os.Getenv("ENVIRONMENT")
+	if env == "debug" {
+		log.SetLevel(logrus.DebugLevel)
+		log.SetFormatter(&logrus.TextFormatter{})
+	}
+	appAddr := fmt.Sprintf("%s:%s", os.Getenv("ADDR"), os.Getenv("PORT"))
 
 	storage := db.CreateStorage(log)
 
@@ -31,13 +41,13 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("opening db")
 	}
-	api := Api{db: database, log: log}
+	api := Api{db: database, log: log, env: &env}
 
 	router := api.setupRouter()
 
 	srv := &http.Server{
 		Addr:         appAddr,
-		WriteTimeout: time.Second * 15,
+		WriteTimeout: time.Second * 30,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
 		Handler:      router,
