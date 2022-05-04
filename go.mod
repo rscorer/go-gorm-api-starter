@@ -20,3 +20,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 )
+
+replace github.com/containerd/containerd => github.com/containerd/containerd v1.6.4
+
+replace github.com/opencontainers/image-spec => github.com/opencontainers/image-spec v1.0.2
