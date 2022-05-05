@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+type Route struct {
+	method string
+	route  string
+}
+
+var Routes = []*Route{}
+var testOptions = []string{http.MethodOptions, http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodHead, http.MethodDelete, http.MethodConnect, http.MethodTrace}
+
 func (api *Api) setupRouter() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
@@ -18,11 +26,12 @@ func (api *Api) setupRouter() *chi.Mux {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.GetHead)
 
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	// custom 405 not allowed handler
 	r.MethodNotAllowed(api.methodNotAllowedResponse)
+	r.NotFound(api.notFoundResponse)
 
 	r.Route("/v1", func(r chi.Router) {
 		r.Get("/ping", api.PingHandler)
@@ -30,26 +39,41 @@ func (api *Api) setupRouter() *chi.Mux {
 		r.Get("/health", api.HealthCheckHandler)
 	})
 
+	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+		route = strings.Replace(route, "/*/", "/", -1)
+		Routes = append(Routes, &Route{route: route, method: method})
+		fmt.Printf("%s %s\n", method, route)
+		return nil
+	}
+
+	if err := chi.Walk(r, walkFunc); err != nil {
+		fmt.Printf("Logging err: %s\n", err.Error())
+	}
+
 	return r
+}
+
+func (api *Api) notFoundResponse(w http.ResponseWriter, r *http.Request) {
+	api.respondError(w, http.StatusNotFound, "resource not found")
 }
 
 func (api *Api) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request) {
 	message := fmt.Sprintf("the %s method is not supported for this resource", r.Method)
-	rctx := chi.RouteContext(r.Context())
 	routePath := r.URL.Path
 	if routePath == "" {
 		if r.URL.RawPath != "" {
 			routePath = r.URL.RawPath
 		}
 	}
-	tctx := chi.NewRouteContext()
-	allowedOptions := []string{"OPTIONS"}
-	testOptions := []string{http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodHead, http.MethodDelete, http.MethodConnect, http.MethodTrace}
-	for _, option := range testOptions {
-		if rctx.Routes.Match(tctx, option, routePath) {
-			allowedOptions = append(allowedOptions, option)
+	var allowedOptions []string
+	for _, route := range Routes {
+		for _, method := range testOptions {
+			if route.route == routePath && route.method == method {
+				allowedOptions = append(allowedOptions, route.method)
+			}
 		}
 	}
+
 	w.Header().Set("Allow", strings.Join(allowedOptions, ","))
 	api.respondError(w, http.StatusMethodNotAllowed, message)
 }
