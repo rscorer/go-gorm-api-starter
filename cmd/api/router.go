@@ -11,13 +11,7 @@ import (
 	"time"
 )
 
-type Route struct {
-	method string
-	route  string
-}
-
-var Routes = []*Route{}
-var testOptions = []string{http.MethodOptions, http.MethodGet, http.MethodPost, http.MethodPatch, http.MethodPut, http.MethodHead, http.MethodDelete, http.MethodConnect, http.MethodTrace}
+var Routes = map[string][]string{}
 
 func (api *Api) setupRouter() *chi.Mux {
 	r := chi.NewRouter()
@@ -39,10 +33,14 @@ func (api *Api) setupRouter() *chi.Mux {
 		r.Get("/health", api.HealthCheckHandler)
 	})
 
+	Routes = make(map[string][]string, 0)
+
 	walkFunc := func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
 		route = strings.Replace(route, "/*/", "/", -1)
-		Routes = append(Routes, &Route{route: route, method: method})
-		fmt.Printf("%s %s\n", method, route)
+		if Routes[route] == nil {
+			Routes[route] = make([]string, 0)
+		}
+		Routes[route] = append(Routes[route], method)
 		return nil
 	}
 
@@ -65,16 +63,8 @@ func (api *Api) methodNotAllowedResponse(w http.ResponseWriter, r *http.Request)
 			routePath = r.URL.RawPath
 		}
 	}
-	var allowedOptions []string
-	for _, route := range Routes {
-		for _, method := range testOptions {
-			if route.route == routePath && route.method == method {
-				allowedOptions = append(allowedOptions, route.method)
-			}
-		}
-	}
 
-	w.Header().Set("Allow", strings.Join(allowedOptions, ","))
+	w.Header().Set("Allow", strings.Join(Routes[routePath], ","))
 	api.respondError(w, http.StatusMethodNotAllowed, message)
 }
 
