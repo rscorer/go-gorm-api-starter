@@ -1,6 +1,6 @@
 module api
 
-go 1.18
+go 1.21
 
 require (
 	github.com/bitly/go-simplejson v0.5.1
@@ -16,5 +16,5 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	golang.org/x/sys v0.11.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
